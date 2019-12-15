@@ -731,23 +731,26 @@ class _MultiProcessingDataLoaderIter(_BaseDataLoaderIter):
         else:
             self._pin_memory_result_queue = self._worker_result_queue
 
-        self._post_process_thread_done_events = []
-        self._post_process_queues = []
-        self._post_process_threads = []
-        last_queue = self._pin_memory_result_queue
-        for i, _processor in enumerate(self._processors):
-            self._post_process_thread_done_events += [threading.Event()]
-            self._post_process_queues += [queue.Queue()]
-            post_process_thread = threading.Thread(
-                target=_postprocess_loop,
-                args=(last_queue, self._post_process_queues[-1],
-                      torch.cuda.current_device(),
-                      self._post_process_thread_done_events[-1], _processor))
-            post_process_thread.daemon = True
-            post_process_thread.start()
-            self._post_process_threads += [post_process_thread]
-            last_queue = self._post_process_queues[-1]
-        self._data_queue = self._post_process_queues[-1]
+        if len(self._processors):
+            self._post_process_thread_done_events = []
+            self._post_process_queues = []
+            self._post_process_threads = []
+            last_queue = self._pin_memory_result_queue
+            for i, _processor in enumerate(self._processors):
+                self._post_process_thread_done_events += [threading.Event()]
+                self._post_process_queues += [queue.Queue()]
+                post_process_thread = threading.Thread(
+                    target=_postprocess_loop,
+                    args=(last_queue, self._post_process_queues[-1],
+                        torch.cuda.current_device(),
+                        self._post_process_thread_done_events[-1], _processor))
+                post_process_thread.daemon = True
+                post_process_thread.start()
+                self._post_process_threads += [post_process_thread]
+                last_queue = self._post_process_queues[-1]
+            self._data_queue = self._post_process_queues[-1]
+        else:
+            self._data_queue = self._pin_memory_result_queue
 
         # self._post_process = True
         # if self._post_process:
@@ -946,15 +949,16 @@ class _MultiProcessingDataLoaderIter(_BaseDataLoaderIter):
         if not self._shutdown:
             self._shutdown = True
             try:
-                in_queues = [self._pin_memory_result_queue] + self._post_process_queues[:-1]
-                for done_event, in_queue, thread in zip(
-                    self._post_process_thread_done_events[::-1],
-                    in_queues[::-1],
-                    self._post_process_threads[::-1],
-                ):
-                    done_event.set()
-                    in_queue.put((None, None))
-                    thread.join()
+                if len(self._processors) > 0:
+                    in_queues = [self._pin_memory_result_queue] + self._post_process_queues[:-1]
+                    for done_event, in_queue, thread in zip(
+                        self._post_process_thread_done_events[::-1],
+                        in_queues[::-1],
+                        self._post_process_threads[::-1],
+                    ):
+                        done_event.set()
+                        in_queue.put((None, None))
+                        thread.join()
 
                 # if hasattr(self, '_post_process_thread'):
                 #     # Use hasattr in case error happens before we set the attribute.
