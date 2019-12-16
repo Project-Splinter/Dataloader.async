@@ -2,7 +2,7 @@ import time
 import torch
 import tqdm
 
-from dataloader import DataLoader
+from dataloaderAsync import DataLoader
 
 class Dataset():
     def __init__(self):
@@ -21,17 +21,17 @@ def nnet(x):
 def reconstruction(x):
     time.sleep(0.033)
     return x + 0.01
-    
+
 def render(x):
     time.sleep(0.033)
     return x + 0.001
-    
+
 if __name__ == '__main__':
     dataset = Dataset()
     loader = DataLoader(
-        dataset, 
-        batch_size=1, 
-        num_workers=4, 
+        dataset,
+        batch_size=1,
+        num_workers=4,
         pin_memory=True,
         processors=[
             lambda x: x.cuda(),
