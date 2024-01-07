@@ -1,5 +1,5 @@
 # Dataloader.async
-An asynchronous pytorch Dataloader for general neural network pipeline accelaration.
+An asynchronous pytorch Dataloader for general neural network pipeline accelaration. (Tested for `torch==2.1.0`)
 
 <div align="center">
 <img src="figure.png" width="500px"/>
